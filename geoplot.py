@@ -39,7 +39,6 @@ import pandas as pd
 import numpy as np
 
 from string import Template
-from agent_torch.core.helpers import get_by_path
 
 # HTML template for Cesium-based 3D visualization
 # This template is dynamically populated with data and configuration options
@@ -221,10 +220,43 @@ geoplot_template = """
 
 # Helper function to extract nested values from a dictionary using a path
 # Example: read_var(state, "agents/consumers/coordinates")
-def read_var(state, var):
-    return get_by_path(state, re.split("/", var))
+def get_by_path(data, path):
+    """
+    Retrieve a value from a nested dictionary using a '/' separated path.
+
+    Args:
+        data (dict): The dictionary to search.
+        path (str): The '/' separated path to the desired value.
+
+    Returns:
+        The value at the specified path, or None if the path is invalid.
+    """
+    keys = path.split('/')
+    for key in keys:
+        if isinstance(data, dict) and key in data:
+            data = data[key]
+        else:
+            return None
+    return data
 
 
+# Helper function to read a variable from a nested dictionary
+# Example: read_var(state, "agents/consumers/coordinates")
+def read_var(state, path):
+    """
+    Retrieve a variable from a nested dictionary using a '/' separated path.
+
+    Args:
+        state (dict): The dictionary to search.
+        path (str): The '/' separated path to the desired variable.
+
+    Returns:
+        The value at the specified path, or None if the path is invalid.
+    """
+    return get_by_path(state, path)
+
+
+# Add support for rendering polygons and toggleable layers
 class GeoPlot:
     def __init__(self, config, options):
         """
@@ -232,7 +264,7 @@ class GeoPlot:
 
         Args:
             config (dict): Simulation configuration metadata.
-            options (dict): Visualization options including Cesium token, step time, coordinates, and feature.
+            options (dict): Visualization options including Cesium token, step time, coordinates, feature, and polygons.
         """
         self.config = config
         (
@@ -241,12 +273,14 @@ class GeoPlot:
             self.entity_position,
             self.entity_property,
             self.visualization_type,
+            self.polygons,
         ) = (
             options["cesium_token"],
             options["step_time"],
             options["coordinates"],
             options["feature"],
             options["visualization_type"],
+            options.get("polygons", []),
         )
 
     def render(self, state_trajectory):
@@ -299,6 +333,26 @@ class GeoPlot:
                     }
                 )
             geojsons.append({"type": "FeatureCollection", "features": features})
+
+        # Add polygons to GeoJSON data
+        for polygon in self.polygons:
+            geojsons.append(
+                {
+                    "type": "FeatureCollection",
+                    "features": [
+                        {
+                            "type": "Feature",
+                            "geometry": {
+                                "type": "Polygon",
+                                "coordinates": polygon["coordinates"],
+                            },
+                            "properties": {
+                                "layer": polygon["layer"],
+                            },
+                        }
+                    ],
+                }
+            )
 
         # Save GeoJSON data to a file
         with open(geodata_path, "w", encoding="utf-8") as f:
