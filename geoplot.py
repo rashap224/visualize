@@ -264,6 +264,7 @@ class GeoPlot:
         for i in range(0, len(state_trajectory) - 1):
             final_state = state_trajectory[i][-1]
 
+            # Extract coordinates and flatten values for visualization
             coords = np.array(read_var(final_state, self.entity_position)).tolist()
             values.append(
                 np.array(read_var(final_state, self.entity_property)).flatten().tolist()
