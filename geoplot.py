@@ -249,12 +249,13 @@ class GeoPlot:
             options["visualization_type"],
         )
 
-    def render(self, state_trajectory):
+    def render(self, state_trajectory, polygons=None):
         """
-        Render the 3D visualization based on the simulation state trajectory.
+        Render the 3D visualization based on the simulation state trajectory and optional polygons.
 
         Args:
             state_trajectory (list): List of simulation states over time.
+            polygons (list, optional): List of polygons to render. Each polygon should be a dictionary with 'coordinates' and 'properties'.
         """
         coords, values = [], []
         name = self.config["simulation_metadata"]["name"]
@@ -298,6 +299,22 @@ class GeoPlot:
                     }
                 )
             geojsons.append({"type": "FeatureCollection", "features": features})
+
+        # Add polygons to GeoJSON if provided
+        if polygons:
+            polygon_features = []
+            for polygon in polygons:
+                polygon_features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": polygon["coordinates"],
+                        },
+                        "properties": polygon.get("properties", {}),
+                    }
+                )
+            geojsons.append({"type": "FeatureCollection", "features": polygon_features})
 
         # Save GeoJSON data to a file
         with open(geodata_path, "w", encoding="utf-8") as f:
